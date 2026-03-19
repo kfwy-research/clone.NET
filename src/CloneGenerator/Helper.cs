@@ -1,5 +1,4 @@
 ﻿using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace CloneGenerator;
@@ -35,11 +34,11 @@ public static class Helper
         return property.AccessorList?.Accessors.Count(x => x.Body is null) == 2;
     }
 
-    public static void ThrowUnhandled(ISymbol symbol)
+    public static void ThrowUnhandled(SourceProductionContext ctx,ISymbol symbol)
     {
-        var location = symbol.Locations.First().GetLineSpan();
-
-        throw new UnhandledCloneTypeException(
-            $"throw new Exception(\"unhandled field {symbol} in {location.Path}:line {location.StartLinePosition.Line}\");");
+        var location = symbol.Locations.FirstOrDefault();
+        ctx.ReportDiagnostic(Diagnostic.Create(Errors.UnkownTypeError,
+            location,
+            symbol.Name));
     }
 }

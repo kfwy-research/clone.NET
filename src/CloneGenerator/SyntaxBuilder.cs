@@ -99,9 +99,9 @@ public class ClassBuilder : SyntaxBuilder
     }
 
 
-    public void CreateField(ISymbol syntax, Compilation compilation)
+    public void CreateField(SourceProductionContext ctx, ISymbol syntax, Compilation compilation)
     {
-        _builders.Add(new FieldBuilder(syntax, compilation, Indent + "    "));
+        _builders.Add(new FieldBuilder(ctx, syntax, compilation, Indent + "    "));
     }
 
     public void CreateProperty(IPropertySymbol symbol)
@@ -117,16 +117,23 @@ public class ClassBuilder : SyntaxBuilder
     protected override void CreateBegin()
     {
         string clazzName = _symbol.Name;
-
         _sb.AppendLine($"{Indent}partial class {clazzName}: IClone<{clazzName}>");
         _sb.AppendLine($"{Indent}{{");
-        _sb.AppendLine($"{Indent}    public virtual void Clone({clazzName} target)");
+
+        _sb.AppendLine($"{Indent}    public virtual {clazzName} Clone()");
+        _sb.AppendLine($"{Indent}    {{");
+        _sb.AppendLine($"{Indent}        {clazzName} target = new ();");
+        _sb.AppendLine($"{Indent}        Clone0(target);");
+        _sb.AppendLine($"{Indent}        return target;");
+        _sb.AppendLine($"{Indent}    }}");
+
+        _sb.AppendLine($"{Indent}    public virtual void Clone0({clazzName} target)");
         _sb.AppendLine($"{Indent}    {{");
 
         if (_symbol.BaseType is not null &&
             _symbol.BaseType.GetAttributes().Any(x => x.ToString() is "Clone.CloneableAttribute"))
         {
-            _sb.AppendLine($"{Indent}        base.Clone(target);");
+            _sb.AppendLine($"{Indent}        base.Clone0(target);");
         }
     }
 
@@ -139,14 +146,17 @@ public class ClassBuilder : SyntaxBuilder
 
 class FieldBuilder : SyntaxBuilder
 {
+    private readonly SourceProductionContext _ctx;
     private readonly ISymbol _symbol;
     private readonly Compilation _compilation;
     private int _version;
     private int _id;
     private static int _idStore;
 
-    public FieldBuilder(ISymbol symbol, Compilation compilation, string indent) : base(indent)
+    public FieldBuilder(SourceProductionContext ctx, ISymbol symbol, Compilation compilation, string indent) :
+        base(indent)
     {
+        _ctx = ctx;
         _symbol = symbol;
         _compilation = compilation;
         _id = ++_idStore;
@@ -174,7 +184,7 @@ class FieldBuilder : SyntaxBuilder
 
                 break;
             default:
-                Helper.ThrowUnhandled(_symbol);
+                Helper.ThrowUnhandled(_ctx, _symbol);
                 break;
         }
 
@@ -253,7 +263,7 @@ class FieldBuilder : SyntaxBuilder
                                              {{Indent}}        {{comment}}{{parentVar}} = null;
                                              {{Indent}}    }
                                              {{Indent}}    else {
-                                             {{Indent}}        if (r{{ver}} is null) r{{ver}} = new ();
+                                             {{Indent}}        if (r{{ver}} is null) r{{ver}} = new ({{right}}.Count);
                                              """);
 
                             if (!noLeft)
@@ -315,7 +325,7 @@ class FieldBuilder : SyntaxBuilder
                         }
                         default:
                         {
-                            Helper.ThrowUnhandled(_symbol);
+                            Helper.ThrowUnhandled(_ctx, _symbol);
                             break;
                         }
                     }
@@ -324,10 +334,11 @@ class FieldBuilder : SyntaxBuilder
                 {
                     if (!type.GetAttributes().Any(x => x.ToString() == "Clone.CloneableAttribute"))
                     {
-                        Helper.ThrowUnhandled(_symbol);
+                        Helper.ThrowUnhandled(_ctx, _symbol);
                     }
 
-                    _sb.AppendLine($"{Indent}    {left} =  Cloner.Make({right});");
+                    _sb.AppendLine($"{Indent}    {left} =  new ();");
+                    _sb.AppendLine($"{Indent}    {right}.Clone0({rt});");
                 }
             }
                 break;
@@ -378,7 +389,7 @@ class FieldBuilder : SyntaxBuilder
                 break;
             default:
             {
-                Helper.ThrowUnhandled(_symbol);
+                Helper.ThrowUnhandled(_ctx, _symbol);
                 break;
             }
         }
@@ -403,6 +414,11 @@ public static class SyntaxHelper
 {
     internal static TypedConstantKind GetTypedConstantKind(ITypeSymbol type, Compilation compilation)
     {
+        if (type.Name == "Type")
+        {
+            return TypedConstantKind.Primitive;
+        }
+
         switch (type.SpecialType)
         {
             case SpecialType.System_Boolean:

@@ -1,6 +1,6 @@
 ﻿namespace Clone;
 
-public interface IClone<T>
+public interface IClone<out T> where T : class, new()
 {
-    void Clone(T target);
+    T Clone();
 }

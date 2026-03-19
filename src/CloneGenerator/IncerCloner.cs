@@ -20,8 +20,10 @@ public class CloneIncrementalGenerator : IIncrementalGenerator
 
             if (!clazz.Modifiers.Any(x => x.IsKind(SyntaxKind.PartialKeyword)))
             {
-                // throw new Exception("class must be partial");
-                // TODO FIXME show this error
+                ctx.ReportDiagnostic(Diagnostic.Create(
+                    Errors.PartialRequiredError,
+                    source.Left?.GetLocation(),
+                    source.Left?.Identifier.ToString()));
                 return;
             }
 
@@ -55,13 +57,12 @@ public class CloneIncrementalGenerator : IIncrementalGenerator
                 {
                     case SymbolKind.Field:
                     {
-                        classBuilder.CreateField(memberSymbol, compilation);
-
+                        classBuilder.CreateField(ctx, memberSymbol, compilation);
                         break;
                     }
                     case SymbolKind.Property:
                     {
-                        classBuilder.CreateField(memberSymbol, compilation);
+                        classBuilder.CreateField(ctx, memberSymbol, compilation);
                         break;
                     }
                 }

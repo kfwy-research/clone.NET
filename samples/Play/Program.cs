@@ -1,22 +1,18 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Diagnostics;
 using Clone;
 using Mapster;
 using MemoryPack;
 using Newtonsoft.Json;
 
-[DllImport("winmm")]
-static extern void timeBeginPeriod(int t);
-
-timeBeginPeriod(1);
-
 A NewA()
 {
     return new A()
     {
-        IdArr = [1,2,3],
-        IdArr2 = [[1],[2]],
-        ChildArr = [new Child(){Id = Random.Shared.Next()}],
-        ChildArr2 = [[new Child(){Id = Random.Shared.Next()}]],
+        Dict = new Dictionary<Type, int> { { typeof(A), 1 } },
+        IdArr = [1, 2, 3],
+        IdArr2 = [[1], [2]],
+        ChildArr = [new Child() { Id = Random.Shared.Next() }],
+        ChildArr2 = [[new Child() { Id = Random.Shared.Next() }]],
         Id2 = 1111,
 
         Ints = [1, 2, 3, 4],
@@ -46,12 +42,13 @@ var source = NewA();
 
 void Measure(Action action)
 {
-    DateTimeOffset start = DateTimeOffset.Now;
+    var sw = Stopwatch.StartNew();
+
     long i = GC.GetAllocatedBytesForCurrentThread();
 
     action();
-    Console.WriteLine($"total: {DateTimeOffset.Now - start}");
-    Console.WriteLine($"bytes: {GC.GetAllocatedBytesForCurrentThread() - i}");
+    Console.WriteLine($"total: {sw.ElapsedMilliseconds}ms");
+    Console.WriteLine($"bytes: {GC.GetAllocatedBytesForCurrentThread() - i:N0}\n\n");
 }
 
 void Dump<T>(T a, T b)
@@ -63,54 +60,54 @@ void Dump<T>(T a, T b)
     Console.WriteLine(sourceStr == cloneStr);
 }
 
-Dump(source.Adapt<A>(), Cloner.Make(source));
+Dump(source.Adapt<A>(), source.Clone());
 
-// Measure(() =>
-// {
-//     for (int i = 0; i < 1000000; i++)
-//     {
-//         MemoryPackSerializer.Deserialize<A>(MemoryPackSerializer.Serialize(source));
-//     }
-// });
+Measure(() =>
+{
+    for (int i = 0; i < 1000000; i++)
+    {
+        MemoryPackSerializer.Deserialize<A>(MemoryPackSerializer.Serialize(source));
+    }
 
-// Measure(() =>
-// {
-//     for (int i = 0; i < 1000000; i++)
-//     {
-//         source.Adapt<A>();
-//     }
-// });
-//
-// Measure(() =>
-// {
-//     for (int i = 0; i < 1000000; i++)
-//     {
-//         Cloner.Make(source);
-//     }
-// });
+    Console.WriteLine("memorypack");
+});
 
-var item = new MChild() { Id = Random.Shared.Next(), NameM = "M" };
+Measure(() =>
+{
+    for (int i = 0; i < 1000000; i++)
+    {
+        source.Adapt<A>();
+    }
 
-Console.WriteLine(JsonConvert.SerializeObject(Cloner.Make((Child)item)));
+    Console.WriteLine("adapt");
+});
 
-var clone = Cloner.Make(source);
+Measure(() =>
+{
+    for (int i = 0; i < 1000000; i++)
+    {
+        source.Clone();
+    }
 
+    Console.WriteLine("clone");
+});
 
-string sourceStr = JsonConvert.SerializeObject(source);
-string cloneStr = JsonConvert.SerializeObject(clone);
-Console.WriteLine(sourceStr);
-Console.WriteLine(cloneStr);
+// var item = new MChild() { Id = Random.Shared.Next(), NameM = "M" };
 
-Console.WriteLine(sourceStr == cloneStr);
+// Console.WriteLine(JsonConvert.SerializeObject(Cloner.Make((Child)item)));
 
-// ((IZ)new Z2()).Clone();
+// var clone = Cloner.Make(source);
 
 
-// int[][] a = new int[][];
+// string sourceStr = JsonConvert.SerializeObject(source);
+// string cloneStr = JsonConvert.SerializeObject(clone);
+// Console.WriteLine(sourceStr);
+// Console.WriteLine(cloneStr);
 
+// Console.WriteLine(sourceStr == cloneStr);
 
-Console.WriteLine(JsonConvert.SerializeObject(Cloner.Make((Z)new Z2() {i = 2, i2 = 3})));
-((Z)new Z2()).A();
+// Console.WriteLine(JsonConvert.SerializeObject(Cloner.Make((Z)new Z2() { i = 2, i2 = 3 })));
+// ((Z)new Z2()).A();
 
 [Cloneable]
 public partial class Test
@@ -132,7 +129,6 @@ partial class Z
     {
         Console.WriteLine(111);
     }
-
 }
 
 [Cloneable]
@@ -155,6 +151,7 @@ interface If
 [Cloneable]
 public partial class A
 {
+    public Dictionary<Type, int> Dict;
     private int Id = 0;
 
     private int ID { get; }
