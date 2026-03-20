@@ -117,15 +117,27 @@ public class ClassBuilder : SyntaxBuilder
     protected override void CreateBegin()
     {
         string clazzName = _symbol.Name;
+        string clonePrefix = "";
+
+        if (_symbol.BaseType?.GetAttributes()
+            .Any(ad => ad.AttributeClass?.ToDisplayString() == "Clone.CloneableAttribute") is true)
+        {
+            clonePrefix = " override";
+        }
+        else
+        {
+            clonePrefix = " virtual";
+        }
+
         _sb.AppendLine($"{Indent}partial class {clazzName}: IClone<{clazzName}>");
         _sb.AppendLine($"{Indent}{{");
 
-        _sb.AppendLine($"{Indent}    public virtual {clazzName} Clone()");
+        _sb.AppendLine($"{Indent}    public{clonePrefix} {clazzName} Clone()");
         _sb.AppendLine($"{Indent}    {{");
         _sb.AppendLine($"{Indent}        {clazzName} target = new ();");
         _sb.AppendLine($"{Indent}        Clone0(target);");
         _sb.AppendLine($"{Indent}        return target;");
-        _sb.AppendLine($"{Indent}    }}");
+        _sb.AppendLine($"{Indent}    }}\n");
 
         _sb.AppendLine($"{Indent}    public virtual void Clone0({clazzName} target)");
         _sb.AppendLine($"{Indent}    {{");
