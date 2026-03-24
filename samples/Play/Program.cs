@@ -76,21 +76,23 @@ Measure(() =>
 {
     for (int i = 0; i < 1000000; i++)
     {
-        source.Adapt<A>();
+        source.Clone();
     }
 
-    Console.WriteLine("adapt");
+    Console.WriteLine("clone");
 });
 
 Measure(() =>
 {
     for (int i = 0; i < 1000000; i++)
     {
-        source.Clone();
+        source.Adapt<A>();
     }
 
-    Console.WriteLine("clone");
+    Console.WriteLine("adapt");
 });
+
+
 
 // var item = new MChild() { Id = Random.Shared.Next(), NameM = "M" };
 
@@ -151,6 +153,7 @@ interface If
 [Cloneable]
 public partial class A
 {
+    public SortedDictionary<Type, int> SortDict;
     public Dictionary<Type, int> Dict;
     private int Id = 0;
 

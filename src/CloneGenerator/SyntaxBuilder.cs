@@ -117,29 +117,11 @@ public class ClassBuilder : SyntaxBuilder
     protected override void CreateBegin()
     {
         string clazzName = _symbol.Name;
-        string clonePrefix = "";
-
-        if (_symbol.BaseType?.GetAttributes()
-            .Any(ad => ad.AttributeClass?.ToDisplayString() == "Clone.CloneableAttribute") is true)
-        {
-            clonePrefix = " override";
-        }
-        else
-        {
-            clonePrefix = " virtual";
-        }
 
         _sb.AppendLine($"{Indent}partial class {clazzName}: IClone<{clazzName}>");
         _sb.AppendLine($"{Indent}{{");
 
-        _sb.AppendLine($"{Indent}    public{clonePrefix} {clazzName} Clone()");
-        _sb.AppendLine($"{Indent}    {{");
-        _sb.AppendLine($"{Indent}        {clazzName} target = new ();");
-        _sb.AppendLine($"{Indent}        Clone0(target);");
-        _sb.AppendLine($"{Indent}        return target;");
-        _sb.AppendLine($"{Indent}    }}\n");
-
-        _sb.AppendLine($"{Indent}    public virtual void Clone0({clazzName} target)");
+        _sb.AppendLine($"{Indent}    public void Clone0({clazzName} target)");
         _sb.AppendLine($"{Indent}    {{");
 
         if (_symbol.BaseType is not null &&
@@ -268,6 +250,7 @@ class FieldBuilder : SyntaxBuilder
                             break;
                         }
                         case "System.Collections.Generic.Dictionary<,>":
+                        case "System.Collections.Generic.SortedDictionary<,>":
                         {
                             _sb.AppendLine($$"""
                                              {{Indent}}    {{type}} r{{ver}} = {{parentVar}};
@@ -275,7 +258,7 @@ class FieldBuilder : SyntaxBuilder
                                              {{Indent}}        {{comment}}{{parentVar}} = null;
                                              {{Indent}}    }
                                              {{Indent}}    else {
-                                             {{Indent}}        if (r{{ver}} is null) r{{ver}} = new ({{right}}.Count);
+                                             {{Indent}}        if (r{{ver}} is null) r{{ver}} = new ();
                                              """);
 
                             if (!noLeft)
@@ -349,8 +332,11 @@ class FieldBuilder : SyntaxBuilder
                         Helper.ThrowUnhandled(_ctx, _symbol);
                     }
 
-                    _sb.AppendLine($"{Indent}    {left} =  new ();");
-                    _sb.AppendLine($"{Indent}    {right}.Clone0({rt});");
+                    _sb.AppendLine($"{Indent}    {left} = null;");
+                    _sb.AppendLine($"{Indent}    if ({right} != null) {{");
+                    _sb.AppendLine($"{Indent}        {rt} =  {right}.Clone();");
+                    // _sb.AppendLine($"{Indent}        {right}.Clone0({rt});");
+                    _sb.AppendLine($"{Indent}    }}");
                 }
             }
                 break;
